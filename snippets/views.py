@@ -1,6 +1,9 @@
 from django.contrib.auth import get_user_model
 
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, renderers
+from rest_framework.decorators import api_view
+from rest_framework.reverse import reverse
+from rest_framework.response import Response
 
 from snippets.models import Snippet
 from snippets.permissions import IsOwnerOrReadOnly
@@ -8,6 +11,14 @@ from snippets.serializers import SnippetSerializer, UserSerializer
 
 
 User = get_user_model()
+
+
+@api_view(["GET"])
+def api_root_view(request, format=None):
+    return Response({
+        "users": reverse("snippets:user-list", request=request, format=format),
+        "snippets": reverse("snippets:snippet-list", request=request, format=format)
+    })
 
 
 class UserListView(generics.ListAPIView):
@@ -40,3 +51,12 @@ class SnippetDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = SnippetSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly,
                           IsOwnerOrReadOnly]
+
+
+class SnippetHighlightView(generics.GenericAPIView):
+    queryset = Snippet.objects.all()
+    renderer_classes = [renderers.StaticHTMLRenderer]
+
+    def get(self, request, *args, **kwargs):
+        snippet = self.get_object()
+        return Response(snippet.highlighted)
